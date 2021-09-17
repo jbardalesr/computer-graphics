@@ -1,0 +1,183 @@
+// Include standard headers
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+
+// Include GLEW
+#define GLEW_STATIC
+#include <GL/glew.h>
+
+// Include OpenCV
+//#include <opencv2/opencv.hpp>
+
+#include <GLFW/glfw3.h>
+//#include <SOIL2/SOIL2.h>
+#include <string>
+#include <fstream>
+#include <cmath>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+/*This code is used throughout the course.*/
+using namespace std;
+
+/*Loads texture to fragments.
+void loadTexture(const char *textImagePath, GLuint &imageTexture1)
+{
+    cv::Mat image = cv::imread(textImagePath);
+
+    if (image.empty())
+    {
+        std::cout << "Image empty" << std::endl;
+    }
+    else
+    {
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+        glGenTextures(1, &imageTexture1);
+        glBindTexture(GL_TEXTURE_2D, imageTexture1);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        if (CV_VERSION_MAJOR >= 4)
+            cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+        else
+            cout << "Su version de OpenGL < 4, cambie COLOR_BGR2RGB por CV_BGR2RGB en utils.h:42" << endl;
+
+        glTexImage2D(GL_TEXTURE_2D,    // type of texture
+                     0,                // Pyramid level (for mip-mapping) - 0 is the top level
+                     GL_RGB,           // internal color format to convert to
+                     image.cols,       // image width i.e 640 for Kinect in standard mode
+                     image.rows,       // image height i.e. 480 for Kinect in standard mode
+                     0,                // border width in pixels (can either be 1 or 0)
+                     GL_RGB,           // input image format (i.e. GL_RGB, GL_RGBA, GL_BGR, etc...)
+                     GL_UNSIGNED_BYTE, // image data input
+                     image.ptr());     // the actual image data itself
+    }
+}
+*/
+/*Loads the file glsl*/
+string readShaderFile(const char *filePath)
+{
+    string content;
+    ifstream fileStream(filePath, ios::in);
+    string line = "";
+    while (!fileStream.eof())
+    {
+        getline(fileStream, line);
+        content.append(line + "\n");
+    }
+    fileStream.close();
+    return content;
+}
+
+/*capturar los errores en el código de GLSL y lo muestra*/
+bool checkOpenGLError()
+{
+    bool foundError = false;
+    int glErr = glGetError();
+    while (glErr != GL_NO_ERROR)
+    {
+        cout << "glError: " << glErr << endl;
+        foundError = true;
+        glErr = glGetError();
+    }
+    return foundError;
+}
+
+void printShaderLog(GLuint shader)
+{
+    int len = 0;
+    int chWrittn = 0;
+    char *log;
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
+    if (len > 0)
+    {
+        log = (char *)malloc(len);
+        glGetShaderInfoLog(shader, len, &chWrittn, log);
+        cout << "Shader Info Log: " << log << endl;
+        free(log);
+    }
+}
+void printProgramLog(int prog)
+{
+    int len = 0;
+    int chWrittn = 0;
+    char *log;
+    glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &len);
+    if (len > 0)
+    {
+        log = (char *)malloc(len);
+        glGetProgramInfoLog(prog, len, &chWrittn, log);
+        cout << "Program Info Log: " << log << endl;
+        free(log);
+    }
+}
+
+string readShaderSource(const char *filePath)
+{
+    string content = "";
+    ifstream fileStream(filePath, ios::in);
+    //~ cout << "Error: " << strerror(errno) << endl;  // No such file or directory
+    //~ cout << fileStream.is_open() << endl;  // 0
+    string line = "";
+    while (getline(fileStream, line))
+        content.append(line + "\n");
+
+    fileStream.close();
+    return content;
+}
+
+/*Compila el shader y el fragment*/
+GLuint createShaderProgram(const char *vshaderfile, const char *fshaderfile)
+{
+    GLint vertCompiled;
+    GLint fragCompiled;
+    GLint linked;
+
+    string vertShaderStr = readShaderSource(vshaderfile);
+    string fragShaderStr = readShaderSource(fshaderfile);
+
+    const char *vertShaderSrc = vertShaderStr.c_str();
+    const char *fragShaderSrc = fragShaderStr.c_str();
+
+    GLuint vShader = glCreateShader(GL_VERTEX_SHADER);
+    GLuint fShader = glCreateShader(GL_FRAGMENT_SHADER);
+
+    glShaderSource(vShader, 1, &vertShaderSrc, NULL);
+    glShaderSource(fShader, 1, &fragShaderSrc, NULL);
+
+    glCompileShader(vShader);
+    checkOpenGLError();
+    glGetShaderiv(vShader, GL_COMPILE_STATUS, &vertCompiled);
+    if (vertCompiled != 1)
+    {
+        cout << "vertex compilation failed" << endl;
+        printShaderLog(vShader);
+    }
+
+    glCompileShader(fShader);
+    checkOpenGLError();
+    glGetShaderiv(fShader, GL_COMPILE_STATUS, &fragCompiled);
+    if (fragCompiled != 1)
+    {
+        cout << "fragment compilation failed" << endl;
+        printShaderLog(fShader);
+    }
+
+    GLuint vfProgram = glCreateProgram();
+    glAttachShader(vfProgram, vShader);
+    glAttachShader(vfProgram, fShader);
+
+    glLinkProgram(vfProgram);
+    checkOpenGLError();
+    glGetProgramiv(vfProgram, GL_LINK_STATUS, &linked);
+    if (linked != 1)
+    {
+        cout << "linking failed" << endl;
+        printProgramLog(vfProgram);
+    }
+
+    return vfProgram;
+}

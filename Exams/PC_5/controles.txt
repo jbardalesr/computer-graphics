@@ -1,0 +1,12 @@
+Rotacion de la cámara:
+----------------------
+- Tecla A antihorario 
+- Tecla S horario
+
+Rotacion del personaje:
+----------------------
+- Tecla W rotación a la derecha
+- Tecla Q rotación a la izquierda
+
+Para mover a traves del plano presiona las teclas:
+ARRIBA, ABAJO, IZQUIERDA y DERECHA 
